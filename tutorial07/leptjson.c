@@ -347,10 +347,34 @@ int lept_parse(lept_value* v, const char* json) {
 }
 
 static void lept_stringify_string(lept_context* c, const char* s, size_t len) {
-    /* ... */
+    size_t i;
+    assert(s != NULL);
+    PUTC(c, '"');
+    for (i = 0; i < len; i++) {
+        unsigned char ch = (unsigned char) s[i];
+        switch(ch) {
+            case '\"': PUTS(c, "\\\"", 2); break;
+            case '\\': PUTS(c, "\\\\", 2); break;
+            case '\b': PUTS(c, "\\b", 2); break;
+            case '\f': PUTS(c, "\\f", 2); break;
+            case '\n': PUTS(c, "\\n", 2); break;
+            case '\r': PUTS(c, "\\r", 2); break;
+            case '\t': PUTS(c, "\\t", 2); break;
+            default:
+                if (ch < 0x20){
+                    char buffer[7];
+                    sprintf(buffer, "\\u%04X", ch);
+                    PUTS(c, buffer, 6);
+                }else {
+                    PUTC(c, ch);
+                }
+        }
+    }
+    PUTC(c, '"');
 }
 
 static void lept_stringify_value(lept_context* c, const lept_value* v) {
+    size_t i;
     switch (v->type) {
         case LEPT_NULL:   PUTS(c, "null",  4); break;
         case LEPT_FALSE:  PUTS(c, "false", 5); break;
@@ -358,10 +382,24 @@ static void lept_stringify_value(lept_context* c, const lept_value* v) {
         case LEPT_NUMBER: c->top -= 32 - sprintf(lept_context_push(c, 32), "%.17g", v->u.n); break;
         case LEPT_STRING: lept_stringify_string(c, v->u.s.s, v->u.s.len); break;
         case LEPT_ARRAY:
-            /* ... */
+            PUTC(c, '[');
+            for (i = 0; i < v->u.a.size; i++) {
+                if (i > 0) 
+                    PUTC(c, ',');
+                lept_stringify_value(c, &v->u.a.e[i]);
+            }
+            PUTC(c, ']');
             break;
         case LEPT_OBJECT:
-            /* ... */
+            PUTC(c, '{');
+            for (i = 0; i < v->u.o.size; i++) {
+                if (i > 0) 
+                    PUTC(c, ',');
+                lept_stringify_string(c, v->u.o.m[i].k, v->u.o.m[i].klen);
+                PUTC(c, ':');
+                lept_stringify_value(c, &v->u.o.m[i].v);
+            }
+            PUTC(c, '}');
             break;
         default: assert(0 && "invalid type");
     }

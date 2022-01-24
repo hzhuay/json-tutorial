@@ -411,6 +411,23 @@ static void test_stringify_string() {
     TEST_ROUNDTRIP("\"Hello\\nWorld\"");
     TEST_ROUNDTRIP("\"\\\" \\\\ / \\b \\f \\n \\r \\t\"");
     TEST_ROUNDTRIP("\"Hello\\u0000World\"");
+    char json[4];
+    sprintf(json, "\"%c\"\0", 127);
+    
+    lept_value v;
+    char* json2;
+    size_t length;
+    lept_init(&v);
+    EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, json));
+    json2 = lept_stringify(&v, &length);
+    printf("%d %d %d\n", strlen(json), length, sizeof(json));
+    EXPECT_EQ_BASE(sizeof(json) - 1 == length && memcmp(json, json2, length + 1) == 0, json, json2, "%s");
+    size_t i;
+    for (i = 0; i < 3; i++) {
+        printf("%d %d\n", json[i], json2[i]);
+    }
+    lept_free(&v);
+    free(json2);
 }
 
 static void test_stringify_array() {
